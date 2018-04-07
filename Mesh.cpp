@@ -13,6 +13,12 @@
 
 #include "bitmap_image.hpp"
 
+int totalVertexCount;
+
+int Mesh::getTotalVertexCount() {
+	return totalVertexCount;
+}
+
 Mesh::Mesh()
 {
 	
@@ -309,7 +315,7 @@ void Mesh::Load(string input_file)
 
 	fileStream.seekg(ios_base::beg);
 
-	int totalVertexCount = 0;
+	totalVertexCount = 0;
 	int lastVertexCount = 0;
 
 	while(!fileStream.eof())
@@ -321,7 +327,7 @@ void Mesh::Load(string input_file)
 			parseObject(fileStream, currentObject, totalVertexCount);
 			currentObject.obj_model.vertexIndexOffset = lastVertexCount;
 
-			totalVertexCount += currentObject.obj_model.vertices.size();
+			totalVertexCount += currentObject.obj_model.vertices .size();
 			lastVertexCount = totalVertexCount;
 
 			sceneModel.push_back(currentObject);

@@ -157,7 +157,7 @@ private:
 	{
 		//eyebox.obj
 		//sceneName = "ParalellTest.obj"; //"quad_box.obj";
-		sceneName= "quad_box.obj";
+		sceneName= "untitled_quads.obj";
 		windowWidth = 1024;
 		windowHeight = 768;
 		cameraPosition = glm::vec3( 0, 0, 5 );

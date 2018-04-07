@@ -6,6 +6,7 @@
 #include "Ray.h"
 #include <vector>
 
+#include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
 #include <glm/glm.hpp>
@@ -23,7 +24,7 @@ public:
 	void calculateFormFactorsForFace(int i, int samplePoints);
 	void PrepareUnshotRadiosityValues();
 	void calculateRadiosityValues();
-
+	glm::vec2 Radiosity::getTotalCounts(Mesh *mesh);
 	bool doesRayHit(Ray* ray, int j, glm::vec3& hitPoint);
 	bool isVisibleFrom(int i, int j);
 

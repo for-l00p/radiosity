@@ -35,7 +35,7 @@ public:
 	vector<ModelFace*> GetFaceIndexesFromVertexIndex(int modelIndex, int vertIndex);
 
 	void OutputToBitmap(string bmpName, int width, int height);
-
+	int Mesh::getTotalVertexCount();
 
 	GLuint LoadDefaultShaders();
 	GLuint LoadGouraudShaders();
