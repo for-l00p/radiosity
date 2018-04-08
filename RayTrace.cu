@@ -1,6 +1,6 @@
-
-
 #include <optixu/optixu_math_namespace.h>
+#include "Radiosity.h"
+
 using namespace optix;
 
 struct PerRayData_pathtrace
@@ -14,6 +14,9 @@ struct PerRayData_pathtrace
 rtDeclareVariable(optix::Ray, ray, rtCurrentRay, );
 rtDeclareVariable(float, t_hit, rtIntersectionDistance, );
 rtDeclareVariable(int , hit_face, rtIntersection);
+rtDeclareVariable(float3, geometric_normal, attribute geometric_normal, );
+rtDeclareVariable(int, lgt_idx, attribute lgt_idx, );
+rtDeclareVariable(optix::Ray, ray, rtCurrentRay, );
 
 RT_PROGRAM void setRequiredValues() {
 

@@ -19,6 +19,9 @@ optix::Buffer outputFaces, distances;
 optix::Buffer rays;
 optix::Program boundingProgram, intersectionProgram, diffuse_ch;
 
+
+const char* const SAMPLE_NAME = "../../../../Users/PCG DEMO/Desktop/CustomRadiosity";
+
 void destroyContext()
 {
 	if (context)
@@ -54,15 +57,16 @@ void Radiosity::loadSceneFacesFromMesh(Mesh* mesh)
 {
 	destroyContext(); // resets the context before passing new values
 	context = optix::Context::create();
+	context->setRayTypeCount(2);
 
-	const char *ptx = sutil::getPtxString("RADIOSITY", "RayTrace.cu");
+	const char *ptx = sutil::getPtxString(SAMPLE_NAME, "RayTrace.cu");
 	context->setRayGenerationProgram(0, context->createProgramFromPTXString(ptx, "pathtrace_camera"));
 	context->setExceptionProgram(0, context->createProgramFromPTXString(ptx, "exception"));
 	context->setMissProgram(0, context->createProgramFromPTXString(ptx, "miss"));
 
 	//diffuse_ch = context->createProgramFromPTXString(ptx, "diffuse");
 	//diffuse_ch->setClosestHitProgram(0, diffuse_ch);
-	ptx = sutil::getPtxString("RADIOSITY", "parallelogram.cu");
+	ptx = sutil::getPtxString(SAMPLE_NAME, "parallelogram.cu");
 	boundingProgram = context->createProgramFromPTXString(ptx, "bounds");
 	intersectionProgram = context->createProgramFromPTXString(ptx, "intersect");
 
