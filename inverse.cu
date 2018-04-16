@@ -73,15 +73,9 @@ __global__ void set_zero(double *A, double *I, int n, int i) {
 	}
 }
 
-double* calculateInverse(double *f[], int n)
+double* calculateInverse(double *L, int n)
 {
 	//flattening matrix
-	double *L = new double[n*n];
-	for (int i= 0; i < n; i++){
-		for (int j = 0; j < n; j++){
-			L[i*n + j] = f[i][j];
-		}
-	}
 	double *iL = new double[n*n];
 	
 	double *d_A, *d_L, *I, *dI;
