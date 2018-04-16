@@ -18,7 +18,7 @@ using namespace std;
 #define blocksize 64
 
 extern "C"
-double* calculateInverse(double *arr[], int len);
+double* calculateInverse(double *arr, int len);
 
 __global__ void nodiag_normalize(double *A, double *I, int n, int i) {
 	int x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -138,6 +138,14 @@ double* calculateInverse(double *L, int n)
 	cudaFree(d_A);
 	cudaFree(dI);
 
+	for (int i = 0; i < n; i++) {
+		for (int j = 0; j < n; j++)
+		{
+			cout << L[i*n + j] << "\t";
+		}
+		cout << endl;
+	}
+
 	double *c = new double[n*n];
 	for (int i = 0; i < n; i++) {
 		for (int j = 0; j < n; j++)
@@ -145,17 +153,11 @@ double* calculateInverse(double *L, int n)
 			c[i*n + j] = 0;  //put the initial value to zero
 			for (int x = 0; x < n; x++)
 				c[i*n + j] = c[i*n + j] + L[i*n + x] * iL[x*n + j];  //matrix multiplication
-			cout << c[i*n + j] << endl;
+			cout << c[i*n + j] << "\t";
 		}
+		cout << endl;
 	}
 
-	/*for (int i = 0; i < n; i++){
-		double *row = new double[n];
-		for (int j = 0 ; j < n; j++){
-			row[j] = iL[i*n + j];	
-		}
-		inv[i] = *row;
-	}*/
 	delete[]I;
 	delete[]L;
 	delete[]iL;
