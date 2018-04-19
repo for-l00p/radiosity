@@ -27,16 +27,16 @@ using namespace std;
 #include "UserControls.h"
 
 
-int main( int argc, char *argv[] )
+int oldmain(int argc, char *argv[])
 {
-	
-	
+
+
 	ArgParser argParser(argc, argv);
 
 	// Initialise GLFW
-	if( !glfwInit() )
+	if (!glfwInit())
 	{
-		fprintf( stderr, "Failed to initialize GLFW\n" );
+		fprintf(stderr, "Failed to initialize GLFW\n");
 		return -1;
 	}
 
@@ -45,11 +45,11 @@ int main( int argc, char *argv[] )
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
 
 	// Open a window and create its OpenGL context
-	window = glfwCreateWindow( argParser.windowWidth, argParser.windowHeight, "Radiosity", NULL, NULL);
+	window = glfwCreateWindow(argParser.windowWidth, argParser.windowHeight, "Radiosity", NULL, NULL);
 
-	if( window == NULL )
+	if (window == NULL)
 	{
-		fprintf( stderr, "Failed to open GLFW window.\n" );
+		fprintf(stderr, "Failed to open GLFW window.\n");
 		glfwTerminate();
 		return -1;
 	}
@@ -57,7 +57,7 @@ int main( int argc, char *argv[] )
 	glfwMakeContextCurrent(window);
 
 	// Initialize GLEW
-	if (glewInit() != GLEW_OK) 
+	if (glewInit() != GLEW_OK)
 	{
 		fprintf(stderr, "Failed to initialize GLEW\n");
 		return -1;
@@ -66,7 +66,7 @@ int main( int argc, char *argv[] )
 	// Ensure we can capture the escape key being pressed below
 	glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
 
-	glfwSetCursorPos(window, argParser.windowWidth/2, argParser.windowHeight/2);
+	glfwSetCursorPos(window, argParser.windowWidth / 2, argParser.windowHeight / 2);
 
 	// Dark blue background
 	glClearColor(argParser.bgcolor.r, argParser.bgcolor.g, argParser.bgcolor.b, 0.0f);
@@ -81,11 +81,11 @@ int main( int argc, char *argv[] )
 	glEnable(GL_CULL_FACE);
 
 	UserControls userControls(
-			argParser.cameraPosition,
-			argParser.horizontalAngle,
-			argParser.verticalAngle, 
-			argParser.interpolate
-		);
+		argParser.cameraPosition,
+		argParser.horizontalAngle,
+		argParser.verticalAngle,
+		argParser.interpolate
+	);
 	Mesh* mesh = new Mesh();
 	Radiosity* radiosity = new Radiosity();
 
@@ -93,7 +93,7 @@ int main( int argc, char *argv[] )
 
 
 	std::cout << sizeof(ObjectModel) << std::endl;
-	
+
 	glShadeModel(GL_SMOOTH);
 	// Create and compile our GLSL program from the mesh's shaders
 	GLuint meshShaderProgramID = mesh->LoadDefaultShaders();
@@ -104,10 +104,10 @@ int main( int argc, char *argv[] )
 	radiosity->loadSceneFacesFromMesh(mesh);
 
 	//if we have number of subdivisions
-	if(argParser.numSubdivisions > 0)
+	if (argParser.numSubdivisions > 0)
 	{
 		printf("Subdivision\n");
-		for(int i=0; i<argParser.numSubdivisions; i++)
+		for (int i = 0; i<argParser.numSubdivisions; i++)
 		{
 			printf("LOD: %d\n", i);
 			mesh->Subdivide();
@@ -132,17 +132,17 @@ int main( int argc, char *argv[] )
 		mesh->SetMVP(MVP);
 
 		//if we have set number of iterations, then do them, output the image and exit immediatelly
-		if(argParser.numIterations > 0)
+		if (argParser.numIterations > 0)
 		{
 			printf("Calculating radiosity solution for scene. This could take a while...\n");
-			for(int i=0; i< argParser.numIterations; i++)
+			for (int i = 0; i< argParser.numIterations; i++)
 			{
 				printf("Radiosity iteration: %d\n", i);
 				radiosity->calculateRadiosityValues();
 				radiosity->setMeshFaceColors();
 			}
 			printf("Caching vertex positions and colors...\n");
-			if(argParser.interpolate)
+			if (argParser.interpolate)
 				mesh->cacheVerticesFacesAndColors_Radiosity_II();
 			else
 				mesh->cacheVerticesFacesAndColors();
@@ -154,11 +154,11 @@ int main( int argc, char *argv[] )
 
 			// Swap buffers
 			glfwSwapBuffers(window);
-			
+
 			GLenum err;
 			while ((err = glGetError()) != GL_NO_ERROR)
 			{
-				printf("OpenGL error: %d\n",  err);
+				printf("OpenGL error: %d\n", err);
 			}
 
 			printf("Preparing to save file\n");
@@ -167,40 +167,40 @@ int main( int argc, char *argv[] )
 			string bmpName(to_string(now).append(".bmp"));
 			int windowWidth;
 			int windowHeight;
-			glfwGetWindowSize (window, &windowWidth, &windowHeight);
+			glfwGetWindowSize(window, &windowWidth, &windowHeight);
 			mesh->OutputToBitmap(bmpName, windowWidth, windowHeight);
 			printf("Screenshot saved: %s\n", bmpName);
 
 			//close the window
 			glfwSetWindowShouldClose(window, GL_TRUE);
 		}
-		
-			userControls.handleKeyboard(mesh, radiosity);
-			//draw the mesh
-			mesh->Draw();
 
-			// Swap buffers
-			glfwSwapBuffers(window);
+		userControls.handleKeyboard(mesh, radiosity);
+		//draw the mesh
+		mesh->Draw();
 
-			glfwPollEvents();
+		// Swap buffers
+		glfwSwapBuffers(window);
 
-			GLenum err;
-			while ((err = glGetError()) != GL_NO_ERROR)
-			{
-				printf("OpenGL error: %d\n",  err);
-			}
-		
+		glfwPollEvents();
+
+		GLenum err;
+		while ((err = glGetError()) != GL_NO_ERROR)
+		{
+			printf("OpenGL error: %d\n", err);
+		}
+
 	} // Check if the ESC key was pressed or the window was closed
-	while( glfwGetKey(window, GLFW_KEY_ESCAPE ) != GLFW_PRESS && glfwWindowShouldClose(window) == 0 );
+	while (glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS && glfwWindowShouldClose(window) == 0);
 
 	// Cleanup mesh VBO
 	mesh->Cleanup();
 
 	// Close OpenGL window and terminate GLFW
 	glfwTerminate();
-	
 
-	
-	
+
+
+
 	return 0;
 }

@@ -25,10 +25,10 @@
 
 // CUDA runtime
 #include <cuda_runtime.h>
-#include "hello.h"
 
-
-
+// helper functions and utilities to work with CUDA
+#include <helper_cuda.h>
+#include <helper_functions.h>
 
 #ifndef MAX
 #define MAX(a,b) (a > b ? a : b)
@@ -37,6 +37,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 // declaration, forward
 
+extern "C" void computeGold(char *reference, char *idata, const unsigned int len);
+extern "C" void computeGold2(int2 *reference, int2 *idata, const unsigned int len);
 
 ///////////////////////////////////////////////////////////////////////////////
 //! Simple test kernel for device functionality

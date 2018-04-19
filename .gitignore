@@ -16,6 +16,7 @@ lib/
 shaders/
 *.bmp
 # Build results
+sutil/
 [Dd]ebug/
 [Dd]ebugPublic/
 [Rr]elease/

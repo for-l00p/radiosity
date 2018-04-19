@@ -7,7 +7,7 @@
 #include <math.h>
 #include <sutil.h>
 
-
+//save me
 #define INITIAL_LIGHT_EMITTER_INTENSITY		10.0f
 #define INITIAL_AMBIENT_INTENSITY			glm::vec3(0.00f, 0.00f, 0.00f)
 
@@ -20,7 +20,7 @@ optix::Buffer rays;
 optix::Program boundingProgram, intersectionProgram, diffuse_ch;
 
 
-const char* const SAMPLE_NAME = "../../../../Users/PCG DEMO/Desktop/CustomRadiosity";
+const char* const SAMPLE_NAME = "../../../../Users/PCG DEMO/Desktop/CustomRadiosity - Copy";
 
 void destroyContext()
 {
@@ -77,7 +77,7 @@ void Radiosity::loadSceneFacesFromMesh(Mesh* mesh)
 	normals = context->createBuffer(RT_BUFFER_INPUT, RT_FORMAT_FLOAT3, totals[0]);
 	faces = context->createBuffer(RT_BUFFER_INPUT, RT_FORMAT_UNSIGNED_INT4, totals[0]);
 	outputFaces = sutil::createInputOutputBuffer(context, RT_FORMAT_FLOAT, FORM_FACTOR_SAMPLES, 0, true);
-	distances = sutil::createInputOutputBuffer(context, RT_FORMAT_FLOAT, FORM_FACTOR_SAMPLES, 0 , true);
+	distances = sutil::createInputOutputBuffer(context, RT_FORMAT_FLOAT, FORM_FACTOR_SAMPLES, 0, true);
 
 	optix::float3 *vertexMap = reinterpret_cast<optix::float3*>(vertices->map());
 	optix::float3 *normalMap = reinterpret_cast<optix::float3*>(normals->map());
@@ -88,14 +88,14 @@ void Radiosity::loadSceneFacesFromMesh(Mesh* mesh)
 
 	int vertexCtr, faceCtr;
 
-	for(int i=0; i<mesh->sceneModel.size(); i++)
+	for (int i = 0; i<mesh->sceneModel.size(); i++)
 	{
 		//for every scene object
 		ObjectModel* currentObject = &mesh->sceneModel[i].obj_model;
-		
+
 		int currentObjFaces = currentObject->faces.size();
 
-		for(int j=0; j < currentObjFaces; j++)
+		for (int j = 0; j < currentObjFaces; j++)
 		{
 			//for every face of it
 			ModelFace* currentFace = &mesh->sceneModel[i].obj_model.faces[j];
@@ -104,7 +104,7 @@ void Radiosity::loadSceneFacesFromMesh(Mesh* mesh)
 
 			radiosityFace.model = currentObject;
 			radiosityFace.faceIndex = j;
-			if(currentFace->material->illuminationMode != 1)
+			if (currentFace->material->illuminationMode != 1)
 				radiosityFace.emission = currentFace->material->diffuseColor * INITIAL_LIGHT_EMITTER_INTENSITY;
 			else
 				radiosityFace.emission = currentFace->material->diffuseColor * INITIAL_AMBIENT_INTENSITY;
@@ -135,7 +135,7 @@ void Radiosity::loadSceneFacesFromMesh(Mesh* mesh)
 			vertexMap[vertexCtr++] = optix::make_float3(D[0], D[1], D[2]);
 		}
 	}
-	
+
 	context["vertex_buffer"]->setBuffer(vertices);
 	context["normal_buffer"]->setBuffer(normals);
 	context["face_buffer"]->setBuffer(faces);
@@ -165,14 +165,14 @@ int Radiosity::getMaxUnshotRadiosityFaceIndex()
 	int index = -1;
 	double maxUnshot = 0.0;
 
-	for(int i=0; i<sceneFaces.size(); i++)
+	for (int i = 0; i<sceneFaces.size(); i++)
 	{
 		double curUnshot = glm::length(sceneFaces[i].unshotRadiosity);
 		double curArea = sceneFaces[i].model->getFaceArea(sceneFaces[i].faceIndex);
 
 		curUnshot *= curArea;
 
-		if(curUnshot > maxUnshot)
+		if (curUnshot > maxUnshot)
 		{
 			index = i;
 			maxUnshot = curUnshot;
@@ -208,7 +208,7 @@ optix::Buffer getOutputBuffer()
 }
 
 void Radiosity::calculateFormFactorsForFace(int i, int samplePointsCount)
-{	
+{
 	vector<Ray> generated_dir(samplePointsCount);
 
 	vector<glm::vec3> samplePoints_i = sceneFaces[i].model->monteCarloSamplePoints(sceneFaces[i].faceIndex, samplePointsCount);
@@ -225,7 +225,7 @@ void Radiosity::calculateFormFactorsForFace(int i, int samplePointsCount)
 	glm::vec3 C = sceneFaces[i].model->vertices[v2_k_index];
 
 	// initializes the rays buffer
-	rays = context->createBuffer(RT_BUFFER_INPUT, RT_FORMAT_USER,samplePointsCount);
+	rays = context->createBuffer(RT_BUFFER_INPUT, RT_FORMAT_USER, samplePointsCount);
 
 	optix::Ray *rayMap = reinterpret_cast<optix::Ray*>(rays->map());
 	// type of ray we're creating 
@@ -234,21 +234,21 @@ void Radiosity::calculateFormFactorsForFace(int i, int samplePointsCount)
 	//We generate a ray and direction based on the various different locations on the face
 	for (int j = 0; j < samplePointsCount; j++) {
 
-		glm::vec3 direction = glm::normalize(getCosineDistributionVector(A,B,C,normal_i));
+		glm::vec3 direction = glm::normalize(getCosineDistributionVector(A, B, C, normal_i));
 
 		generated_dir[j] = Ray(samplePoints_i[j], (direction));
 		optix::float3 origin = optix::make_float3(samplePoints_i[j].x, samplePoints_i[j].y, samplePoints_i[j].z);
-		optix::float3 dir = optix::make_float3(direction.x,direction.y,direction.z);
-		
+		optix::float3 dir = optix::make_float3(direction.x, direction.y, direction.z);
+
 		//creates the iterable RT Rays
-		rayMap[j] = optix::make_Ray(origin,dir,2, 0.001f, 1000000.0f);
-		
+		rayMap[j] = optix::make_Ray(origin, dir, 2, 0.001f, 1000000.0f);
+
 	}
 
 	context["ray"]->setBuffer(rays);
 	for (int j = 0; j < samplePointsCount; j++) {
 		int k;
-		float  distance; 
+		float  distance;
 		glm::vec3 HitPoint;
 		if (isVisibleFrom(generated_dir[j], k, distance, HitPoint)) {
 			//printf("The hitpoint is %f %f %f \n", HitPoint[0], HitPoint[1], HitPoint[2]);
@@ -261,9 +261,9 @@ void Radiosity::calculateFormFactorsForFace(int i, int samplePointsCount)
 			double cos_angle_i = glm::dot(r_ij, normal_i);
 			double cos_angle_j = glm::dot(r_ij, normal_j);
 
-			double delta_F = (cos_angle_i * cos_angle_j) / (3.14159265359 * r_squared + (area_k/samplePointsCount));
+			double delta_F = (cos_angle_i * cos_angle_j) / (3.14159265359 * r_squared + (area_k / samplePointsCount));
 
-			if (abs(delta_F) > 0.0) 
+			if (abs(delta_F) > 0.0)
 				formFactors[i][k] = formFactors[i][k] + abs(delta_F);
 
 		}
@@ -274,7 +274,7 @@ void Radiosity::calculateFormFactorsForFace(int i, int samplePointsCount)
 
 void Radiosity::PrepareUnshotRadiosityValues()
 {
-	for(int i=0; i<sceneFaces.size(); i++)
+	for (int i = 0; i<sceneFaces.size(); i++)
 	{
 		sceneFaces[i].totalRadiosity = sceneFaces[i].emission;
 		sceneFaces[i].unshotRadiosity = sceneFaces[i].emission;
@@ -289,47 +289,47 @@ void Radiosity::calculateRadiosityValues()
 	/*
 	for(int i=0; i<sceneFaces.size(); i++)
 	{
-		sceneFaces[i].totalRadiosity = sceneFaces[i].emission;
-		sceneFaces[i].unshotRadiosity = sceneFaces[i].emission;
+	sceneFaces[i].totalRadiosity = sceneFaces[i].emission;
+	sceneFaces[i].unshotRadiosity = sceneFaces[i].emission;
 	}
 	*/
 	int iterations = 0;
-	 while (
-			error.r > threshold.r &&
-			error.g > threshold.g &&
-			error.b > threshold.b && iterations < 100
+	while (
+		error.r > threshold.r &&
+		error.g > threshold.g &&
+		error.b > threshold.b && iterations < 100
 		)
-	 {
+	{
 		int i = getMaxUnshotRadiosityFaceIndex();
 
 		calculateFormFactorsForFace(i, FORM_FACTOR_SAMPLES);
 
-		 for (int j=0; j< sceneFaces.size(); j++)
-		 {
+		for (int j = 0; j< sceneFaces.size(); j++)
+		{
 			glm::dvec3 p_j = (glm::dvec3)sceneFaces[j].model->faces[sceneFaces[j].faceIndex].material->diffuseColor;
 
 			glm::dvec3 delta_rad = sceneFaces[i].unshotRadiosity * formFactors[i][j] * p_j;
 
 			sceneFaces[j].unshotRadiosity = sceneFaces[j].unshotRadiosity + delta_rad;
-			sceneFaces[j].totalRadiosity  = sceneFaces[j].totalRadiosity + delta_rad;
-		 }
+			sceneFaces[j].totalRadiosity = sceneFaces[j].totalRadiosity + delta_rad;
+		}
 
-		 sceneFaces[i].unshotRadiosity = glm::dvec3(0.0f, 0.0f, 0.0f);
+		sceneFaces[i].unshotRadiosity = glm::dvec3(0.0f, 0.0f, 0.0f);
 
 		int e = getMaxUnshotRadiosityFaceIndex();
 		error = sceneFaces[e].unshotRadiosity;
 		iterations = iterations + 1;
-	 }
-	
+	}
+
 }
 
 void Radiosity::setMeshFaceColors()
 {
-	for (int i=0; i< sceneFaces.size(); i++)
+	for (int i = 0; i< sceneFaces.size(); i++)
 	{
-		glm::dvec3 radValue = glm::clamp(sceneFaces[i].totalRadiosity,0.0,1.0);
+		glm::dvec3 radValue = glm::clamp(sceneFaces[i].totalRadiosity, 0.0, 1.0);
 
-		glm::clamp(radValue,0.0,1.0);
+		glm::clamp(radValue, 0.0, 1.0);
 		sceneFaces[i].model->faces[sceneFaces[i].faceIndex].intensity = radValue;
 	}
 }
@@ -338,7 +338,7 @@ bool Radiosity::isParallelToFace(Ray* r, int i)
 {
 	glm::vec3 n = sceneFaces[i].model->getFaceNormal(sceneFaces[i].faceIndex);
 	float dotProduct = abs(glm::dot(n, r->getDirection()));
-	if(dotProduct <= 0.001f)
+	if (dotProduct <= 0.001f)
 		return true;
 	return false;
 }
@@ -346,13 +346,13 @@ bool Radiosity::isParallelToFace(Ray* r, int i)
 struct RayHit
 {
 	float distance;
-	int hitSceneFaceIndex;	
+	int hitSceneFaceIndex;
 	glm::vec3 hitpoint;
 };
 
 bool rayHit_LessThan(RayHit r1, RayHit r2)
 {
-	if(r1.distance < r2.distance)
+	if (r1.distance < r2.distance)
 		return true;
 	return false;
 }
@@ -369,9 +369,9 @@ bool Radiosity::isVisibleFrom(int i, int j)
 	//now make a ray
 	Ray ray(centroid_i, centroid_j - centroid_i);
 
-	for(int k=0; k<sceneFaces.size(); k++)
+	for (int k = 0; k<sceneFaces.size(); k++)
 	{
-		if(k == i)
+		if (k == i)
 			continue;
 
 		int v0_k_index = sceneFaces[k].model->faces[sceneFaces[k].faceIndex].vertexIndexes[0];
@@ -383,7 +383,7 @@ bool Radiosity::isVisibleFrom(int i, int j)
 		glm::vec3 C = sceneFaces[k].model->vertices[v2_k_index];
 
 		glm::vec3 hitPoint;
-		if(glm::intersectRayTriangle(centroid_i, centroid_j - centroid_i, A, B, C, hitPoint))
+		if (glm::intersectRayTriangle(centroid_i, centroid_j - centroid_i, A, B, C, hitPoint))
 		{
 			RayHit currentHit;
 			currentHit.distance = glm::distance(ray.getStart(), hitPoint);
@@ -393,17 +393,17 @@ bool Radiosity::isVisibleFrom(int i, int j)
 		/*
 		if(doesRayHit(&ray, k, hitPoint))
 		{
-			RayHit currentHit;
-			currentHit.distance = glm::distance(ray.getStart(), hitPoint);
-			currentHit.hitSceneFaceIndex = k;
-			rayHits.push_back(currentHit);
+		RayHit currentHit;
+		currentHit.distance = glm::distance(ray.getStart(), hitPoint);
+		currentHit.hitSceneFaceIndex = k;
+		rayHits.push_back(currentHit);
 		}
 		*/
 	}
-	if(rayHits.empty())
+	if (rayHits.empty())
 		return false;
 
-	if(rayHits.size() == 1)
+	if (rayHits.size() == 1)
 		return true;
 
 	return false;
@@ -416,7 +416,7 @@ bool Radiosity::isVisibleFrom(glm::vec3 point_j, glm::vec3 point_i)
 	//now make a ray
 	Ray ray(point_i, point_j - point_i);
 
-	for(int k=0; k<sceneFaces.size(); k++)
+	for (int k = 0; k<sceneFaces.size(); k++)
 	{
 		int v0_k_index = sceneFaces[k].model->faces[sceneFaces[k].faceIndex].vertexIndexes[0];
 		int v1_k_index = sceneFaces[k].model->faces[sceneFaces[k].faceIndex].vertexIndexes[1];
@@ -427,19 +427,19 @@ bool Radiosity::isVisibleFrom(glm::vec3 point_j, glm::vec3 point_i)
 		glm::vec3 C = sceneFaces[k].model->vertices[v2_k_index];
 
 		glm::vec3 hitPoint;
-		if(glm::intersectRayTriangle(point_i, point_j - point_i, A, B, C, hitPoint))
+		if (glm::intersectRayTriangle(point_i, point_j - point_i, A, B, C, hitPoint))
 		{
 			RayHit currentHit;
 			currentHit.distance = glm::distance(ray.getStart(), hitPoint);
 			currentHit.hitSceneFaceIndex = k;
 			rayHits.push_back(currentHit);
 		}
-		
+
 	}
-	
+
 	// return's the values if it hits
 	return (rayHits.size() == 1);
-		
+
 }
 
 bool Radiosity::isVisibleFrom(Ray input, int & global_k, float & global_distance, glm::vec3  & r_ij)
@@ -483,7 +483,7 @@ bool Radiosity::isVisibleFrom(Ray input, int & global_k, float & global_distance
 				rayHits.push_back(currentHit);
 				hitPoint = glm::vec3(0.0f);
 			}
-			else if (glm::intersectRayTriangle(input.getStart(), input.getDirection(), A, B, C, hitPoint)){
+			else if (glm::intersectRayTriangle(input.getStart(), input.getDirection(), A, B, C, hitPoint)) {
 				currentHit.distance = glm::distance(ray.getStart(), hitPoint);
 				currentHit.hitpoint = hitPoint;
 				currentHit.hitSceneFaceIndex = k;
@@ -493,17 +493,17 @@ bool Radiosity::isVisibleFrom(Ray input, int & global_k, float & global_distance
 
 			hitPoint = glm::vec3(0.0f);
 		}
-		else if (glm::intersectRayTriangle(input.getStart(), input.getDirection(), A, B, C, hitPoint)){
+		else if (glm::intersectRayTriangle(input.getStart(), input.getDirection(), A, B, C, hitPoint)) {
 			currentHit.distance = glm::distance(ray.getStart(), hitPoint);
 			currentHit.hitpoint = hitPoint;
 			currentHit.hitSceneFaceIndex = k;
 			rayHits.push_back(currentHit);
 		}
-		
+
 
 	}
-	
-	if (rayHits.size() >= 1){
+
+	if (rayHits.size() >= 1) {
 		global_k = rayHits[0].hitSceneFaceIndex;
 		float distance = rayHits[0].distance;
 		global_distance = distance;
@@ -545,7 +545,7 @@ bool Radiosity::doesRayHit(Ray* ray, int k, glm::vec3& hitPoint)
 	glm::vec3 A = sceneFaces[k].model->vertices[v0_k_index];
 	glm::vec3 B = sceneFaces[k].model->vertices[v1_k_index];
 	glm::vec3 C = sceneFaces[k].model->vertices[v2_k_index];
-	
+
 	//first we handle the case where patch k has only 3 vertices
 
 	//plane equasion
@@ -555,7 +555,7 @@ bool Radiosity::doesRayHit(Ray* ray, int k, glm::vec3& hitPoint)
 	float b = n_k.y;
 	float c = n_k.z;
 	float d = glm::dot(n_k, A);
-	
+
 	//ray equasion
 	//R(t) = ray.start + t*ray.direction
 	//plug into plane equasion, solve for t
@@ -563,63 +563,63 @@ bool Radiosity::doesRayHit(Ray* ray, int k, glm::vec3& hitPoint)
 	float t = (d - glm::dot(n_k, ray->getStart())) / glm::dot(n_k, ray->getDirection());
 
 	//triangle behind ray
-	if(t<0.0f)
+	if (t<0.0f)
 		return false;
 
 	//calculate the intersection point between the ray and the plane where k lies
 	glm::vec3 Q = ray->getStart() + (t * ray->getDirection());
 
 	//now we determine if Q is inside or outside of k
-	if(sceneFaces[k].model->faces[sceneFaces[k].faceIndex].vertexIndexes.size() == 3)
+	if (sceneFaces[k].model->faces[sceneFaces[k].faceIndex].vertexIndexes.size() == 3)
 	{
-		float AB_EDGE = glm::dot(glm::cross((B - A), (Q - A)) , n_k);
-		float BC_EDGE = glm::dot(glm::cross((C - B), (Q - B)) , n_k);
-		float CA_EDGE = glm::dot(glm::cross((A - C), (Q - C)) , n_k);
+		float AB_EDGE = glm::dot(glm::cross((B - A), (Q - A)), n_k);
+		float BC_EDGE = glm::dot(glm::cross((C - B), (Q - B)), n_k);
+		float CA_EDGE = glm::dot(glm::cross((A - C), (Q - C)), n_k);
 
-		if(AB_EDGE >= 0.0f && BC_EDGE >= 0.0f && CA_EDGE >= 0.0f)
+		if (AB_EDGE >= 0.0f && BC_EDGE >= 0.0f && CA_EDGE >= 0.0f)
 		{
-			float ABC_AREA_DOUBLE = glm::dot(glm::cross((B - A), (C - A)) , n_k);
+			float ABC_AREA_DOUBLE = glm::dot(glm::cross((B - A), (C - A)), n_k);
 
 			float alpha = BC_EDGE / ABC_AREA_DOUBLE;
-			float beta  = CA_EDGE / ABC_AREA_DOUBLE;
+			float beta = CA_EDGE / ABC_AREA_DOUBLE;
 			float gamma = AB_EDGE / ABC_AREA_DOUBLE;
 
 			hitPoint = glm::vec3(alpha * A + beta * B + gamma * C);
 			return true;
 		}
 		else
-			return false;		
+			return false;
 	}
 	else
 	{
 		int v3_k_index = sceneFaces[k].model->faces[sceneFaces[k].faceIndex].vertexIndexes[3];
 		glm::vec3 D = sceneFaces[k].model->vertices[v3_k_index];
 
-		float AB_EDGE = glm::dot(glm::cross((B - A), (Q - A)) , n_k);
-		float BD_EDGE = glm::dot(glm::cross((D - B), (Q - B)) , n_k);
-		float DA_EDGE = glm::dot(glm::cross((A - D), (Q - D)) , n_k);
+		float AB_EDGE = glm::dot(glm::cross((B - A), (Q - A)), n_k);
+		float BD_EDGE = glm::dot(glm::cross((D - B), (Q - B)), n_k);
+		float DA_EDGE = glm::dot(glm::cross((A - D), (Q - D)), n_k);
 
-		float BC_EDGE = glm::dot(glm::cross((C - B), (Q - B)) , n_k);
-		float CD_EDGE = glm::dot(glm::cross((D - C), (Q - C)) , n_k);
-		float DB_EDGE = glm::dot(glm::cross((B - D), (Q - D)) , n_k);
-		
-		if(AB_EDGE >= 0.0f && BD_EDGE >= 0.0f && DA_EDGE >= 0.0f)
+		float BC_EDGE = glm::dot(glm::cross((C - B), (Q - B)), n_k);
+		float CD_EDGE = glm::dot(glm::cross((D - C), (Q - C)), n_k);
+		float DB_EDGE = glm::dot(glm::cross((B - D), (Q - D)), n_k);
+
+		if (AB_EDGE >= 0.0f && BD_EDGE >= 0.0f && DA_EDGE >= 0.0f)
 		{
-			float ABD_AREA_DOUBLE = glm::dot(glm::cross((B - A), (D - A)) , n_k);
+			float ABD_AREA_DOUBLE = glm::dot(glm::cross((B - A), (D - A)), n_k);
 
 			float alpha = BD_EDGE / ABD_AREA_DOUBLE;
-			float beta  = DA_EDGE / ABD_AREA_DOUBLE;
+			float beta = DA_EDGE / ABD_AREA_DOUBLE;
 			float gamma = AB_EDGE / ABD_AREA_DOUBLE;
 
 			hitPoint = glm::vec3(alpha * A + beta * B + gamma * D);
 			return true;
 		}
-		else if(BC_EDGE >= 0.0f && CD_EDGE >= 0.0f && DB_EDGE >= 0.0f)
+		else if (BC_EDGE >= 0.0f && CD_EDGE >= 0.0f && DB_EDGE >= 0.0f)
 		{
-			float BCD_AREA_DOUBLE = glm::dot(glm::cross((B - C), (D - C)) , n_k);
+			float BCD_AREA_DOUBLE = glm::dot(glm::cross((B - C), (D - C)), n_k);
 
 			float alpha = CD_EDGE / BCD_AREA_DOUBLE;
-			float beta  = DB_EDGE / BCD_AREA_DOUBLE;
+			float beta = DB_EDGE / BCD_AREA_DOUBLE;
 			float gamma = BC_EDGE / BCD_AREA_DOUBLE;
 
 			hitPoint = glm::vec3(alpha * B + beta * C + gamma * D);
