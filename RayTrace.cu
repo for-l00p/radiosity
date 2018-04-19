@@ -1,5 +1,6 @@
 #include <optixu/optixu_math_namespace.h>
 //#include "Radiosity.h"
+#include math
 
 using namespace optix;
 
@@ -7,6 +8,8 @@ struct PerRayData_pathtrace
 {
 	float3 origin;
 	float3 direction;
+	float3 result;
+	float importance;
 	int depth;
 };
 
