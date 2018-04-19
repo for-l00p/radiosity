@@ -207,6 +207,22 @@ optix::Buffer getOutputBuffer()
 	return context["output_buffer"]->getBuffer();
 }
 
+float* prepareFF(std::vector<std::vector<double>> h, int size) {
+	int total_size = 0;
+	for (auto& vec : h) total_size += vec.size();
+
+	std::vector<float> flattened;
+	flattened.reserve(total_size);
+
+	for (auto& vec : h) {
+		for (auto& elm : vec) {
+			flattened.push_back(elm);
+		}
+	}
+	auto ptr = flattened.data();
+	return ptr;
+}
+
 void Radiosity::calculateFormFactorsForFace(int i, int samplePointsCount)
 {
 	vector<Ray> generated_dir(samplePointsCount);
