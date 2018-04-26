@@ -16,8 +16,8 @@ GLFWwindow* window;
 // Include GLM
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
-using namespace glm;
 
+using namespace glm;
 #include<vector>
 using namespace std;
 
@@ -30,7 +30,7 @@ using namespace std;
 int oldmain(int argc, char *argv[])
 {
 
-
+	
 	ArgParser argParser(argc, argv);
 
 	// Initialise GLFW
