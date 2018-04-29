@@ -1,7 +1,9 @@
 #include <optixu/optixu_math_namespace.h>
 #include <stdio.h>
 #include <math.h>
+#include <stdlib.h>
 #include <curand.h>
+#include <time.h>
 #include <curand_kernel.h>
 #include <cuda.h>
 #include "errorchecking.cu"
@@ -47,30 +49,27 @@ __global__ void generate_ray_dir(curandState *rand1, curandState *rand2, int n, 
 
 	for (int i = 0; i < num; i++) {
 		while (count < n) {
-			// generating direction for the face
-			//curandState localState = rand1[idx];
-			//curandState localState2 = rand2[idx];
-			//float sin_theta = sqrt(curand_uniform(&localState /*+ idx*/));
 			float sin_theta = sqrt(curand_uniform(rand1 + idx));
 			float cos_theta = sqrt(1 - sin_theta * sin_theta);
-			//float psi = 2 * 3.14159265359 * curand_uniform((&localState  /*+ idx*/));
 			float psi = 2 * 3.14159265359 * curand_uniform((rand1  + idx));
 			float a1 = sin_theta * cos(psi);
 			float b1 = sin_theta * sin(psi);
 			float c1 = cos_theta;
 
-			optix::float3 v1 = a1 * (faces[i].a - faces[i].b);
-			optix::float3 v2 = b1 * (faces[i].a - faces[i].c);
-			optix::float3 v3 = c1 * faces[i].norm;
-			dir[i*n + count] = v1 + v2 + v3;
 			
-			//float r1 = curand_uniform((&localState2  /*+ idx*/));
+			optix::float3 v1 = a1 * (faces[i].b - faces[i].a);
+			optix::float3 v2 = b1 * (faces[i].c - faces[i].a);
+			optix::float3 v3 = c1 * faces[i].norm;
+			
 			float r2 = curand_uniform((rand2 + idx));
 			float r1 = curand_uniform((rand2  + idx));
-			//float r2 = curand_uniform((&localState2 /*+ idx*/));
 
-			optix::float3 pt = (1.0 - sqrt(r1))*faces[i].a + (sqrt(r1) * (1.0 - r2))*faces[i].b + (r2 * sqrt(r1)*faces[i].c);
-			pts[i*n + count] = pt;
+			optix::float3 pt = (1.0 - sqrt(r1))*faces[i].a + (sqrt(r1) * (1.0 - r2))*faces[i].b + (r2 * sqrt(r1)*faces[i].c); 
+			optix::float3 direction = v1 + v2 + v3;
+			dir[i*n + count] = direction; //optix::make_float3(0.5f, 0.5f, 2.5* count); //
+			int pos = i * n + count;
+			optix::float3 pt2 = pt;//optix::make_float3(0.5f, 0.5f, count);
+			pts[pos] = pt2;//
 			count++;
 		}
 	}
@@ -84,33 +83,33 @@ int main() {
 	curandState *d_state1;
 	cudaMalloc((void**)&d_state1, sizeof(curandState));
 	CudaCheckError();
-	rand_kernel <<<1, 1 >>>(d_state, 1234);
+	srand(time(NULL));
+	rand_kernel <<<1, 1 >>>(d_state, rand());
 	CudaCheckError();
-	rand_kernel <<<1, 1 >>>(d_state1, 5678);
+	srand(time(NULL));
+	rand_kernel <<<1, 1 >>>(d_state1, rand());
 	CudaCheckError();
 
 	//host data structures
 	PatchData test;
-	test.a = optix::make_float3(1.0);
-	test.b = optix::make_float3(1.0);
-	test.c = optix::make_float3(1.0);
-	test.norm = optix::make_float3(0.5);
-	//PatchData patches[1] = { test };
-	PatchData *patches = (PatchData*)malloc(sizeof(PatchData));
-	/*PatchData *patches = NULL;
-	cudaMalloc((void**)&patches, PATCH_NUM * sizeof(PatchData));*/
-	patches[0] = test;
+	PatchData *patches = (PatchData*)malloc(PATCH_NUM * sizeof(PatchData));
+	PatchData *t = (PatchData*)malloc(sizeof(PatchData));
+	t->a = optix::make_float3(1.0f, 1.0f, 1.0f);
+	t->b = optix::make_float3(1.0f, 0.0f, 1.0f);
+	t->c = optix::make_float3(1.0f, 1.0f, 0.0f);
+	t->norm = optix::make_float3(0.0f,-1.0f,0.0f);
+	patches[0] = *t;
 
 	optix::float3 *c_dir_arr = (optix::float3*)malloc(SAMPLES *PATCH_NUM * sizeof(optix::float3));
 	optix::float3 *c_pt_arr = (optix::float3*)malloc(SAMPLES*PATCH_NUM * sizeof(optix::float3));
 
 
 	//device data structures
-	PatchData *g_patch_arr=NULL;
-	optix::float3 *g_dir_arr=NULL, *g_pt_arr=NULL;
+	PatchData *g_patch_arr= (PatchData*)malloc(PATCH_NUM * sizeof(PatchData));
+	optix::float3 *g_dir_arr= (optix::float3*)malloc(SAMPLES*PATCH_NUM * sizeof(optix::float3)) , *g_pt_arr=(optix::float3*)malloc(SAMPLES*PATCH_NUM * sizeof(optix::float3));
 	cudaMalloc((void**)&g_patch_arr, PATCH_NUM*sizeof(PatchData));
 	CudaCheckError();
-	//
+
 	cudaMalloc((void**)&g_dir_arr, SAMPLES * PATCH_NUM * sizeof(optix::float3));
 	CudaCheckError();
 	cudaMalloc((void**)&g_pt_arr, SAMPLES*PATCH_NUM * sizeof(optix::float3));
@@ -119,20 +118,32 @@ int main() {
 	cudaMemcpy( g_patch_arr, patches, PATCH_NUM * sizeof(PatchData), cudaMemcpyHostToDevice);
 	CudaCheckError();
 
-	generate_ray_dir <<<1, 1 >>> (d_state, d_state1, SAMPLES, g_patch_arr, PATCH_NUM, g_dir_arr, g_pt_arr);
+	//dim3 grid(1, 1, 1);
+	//dim3 threads(num_threads, 1, 1);
+	//dim3 threads2(len, 1, 1); // more threads needed fir separate int2 version
+	//						  // execute the kernel
+	//kernel << < grid, threads >> >((int *)d_data);
+
+	dim3 grid(1, 1, 1);
+	dim3 threads((PATCH_NUM + 63) / 64, 1, 1);
+
+	generate_ray_dir <<<grid, threads>>> (d_state, d_state1, SAMPLES, g_patch_arr, PATCH_NUM, g_dir_arr, g_pt_arr);
 	CudaCheckError();
 	cudaMemcpy(c_dir_arr, g_dir_arr, SAMPLES*PATCH_NUM * sizeof(optix::float3), cudaMemcpyDeviceToHost);
 	cudaMemcpy(c_pt_arr, g_pt_arr, SAMPLES*PATCH_NUM * sizeof(optix::float3), cudaMemcpyDeviceToHost);
 	for (int i = 0; i < PATCH_NUM; i++) {
 		for (int j = 0; j < SAMPLES; j++) {
-			printf("%f \t", c_dir_arr[i*SAMPLES +j]);
+			float f = c_pt_arr[i*SAMPLES + j].z;
+			float f2 = c_dir_arr[i*SAMPLES + j].z;
+			printf("%f , %f \n", f, f2);
 		}
 		printf("\n");
 	}
-
-
+	printf("Done");
 	
-
+	free(patches);
+	free(c_dir_arr);
+	free(c_pt_arr);
 	return 0;
 }
 
