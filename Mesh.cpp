@@ -11,6 +11,7 @@
 #include <regex>
 
 
+
 #include "bitmap_image.hpp"
 
 int totalVertexCount;
