@@ -101,16 +101,6 @@ int pop() {
 	duration = (std::clock() - start) / (float)CLOCKS_PER_SEC;
 
 	std::cout << "printf: " << duration << '\n';
-	float f = g_pt_arr[(PATCH_NUM - 1)*SAMPLES + SAMPLES - 1].z;
-	float f2 = g_dir_arr[(PATCH_NUM - 1)*SAMPLES + SAMPLES - 1].z;
-	//for (int i = 0; i < PATCH_NUM; i++) {
-	//	for (int j = 0; j < SAMPLES; j++) {
-	//		float f = g_pt_arr[i*SAMPLES + j].z;
-	//		float f2 = g_dir_arr[i*SAMPLES + j].z;
-	//		printf("%f , %f \n", f, f2);
-	//	}
-	//	printf("\n");
-	//}
 	printf("Done");
 
 	free(patches);

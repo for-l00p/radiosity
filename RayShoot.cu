@@ -11,7 +11,7 @@
 #include "errorchecking.cu"
 
 #define PATCH_NUM 5
-#define SAMPLES 10
+#define SAMPLES 2
 
 struct PerRayData_pathtrace
 {
@@ -64,7 +64,7 @@ __device__ float RayTriangleIntersection(const Ray &r,
 //generates random kernel
 __global__ void rand_kernel(curandState *state, int seed) {
 	int idx = threadIdx.x + blockDim.x*blockIdx.x;
-	curand_init(seed, idx, 0, &state[idx]);
+	curand_init(seed, idx, 0, &state[0]);
 }
 
 __device__ void intersectAllTriangles(const Ray& r, const int number_of_triangles, PatchData *faces, int &face_id) {
@@ -92,6 +92,36 @@ __device__ void intersectAllTriangles(const Ray& r, const int number_of_triangle
 	//printf("face_id %d \n", face_id);
 }
 
+__global__ void initialise_curand_on_kernels(curandState * state, unsigned long seed)
+{
+	int idx = blockIdx.x*blockDim.x + threadIdx.x;
+	curand_init(seed, idx, 0, &state[idx]);
+}
+
+__device__ float generate(curandState* globalState, int ind)
+{
+	//copy state to local mem
+	curandState localState = globalState[ind];
+	//apply uniform distribution with calculated random
+	float rndval = curand_uniform(&localState);
+	//update state
+	globalState[ind] = localState;
+	//return value
+	return rndval;
+}
+
+__global__ void set_random_number_from_kernels(float* _ptr, curandState* globalState, const unsigned int _points)
+{
+	int idx = blockIdx.x*blockDim.x + threadIdx.x;
+	//only call gen on the kernels we have inited
+	//(one per device container element)
+	if (idx < _points)
+	{
+		float x = generate(globalState, idx);
+		printf("%f \n", x);
+		_ptr[idx] = x;
+	}
+}
 
 /*
 uses random kernel to calculate ray direction
@@ -100,7 +130,7 @@ num : number of faces
 faces[] : array containing all the faces struct
 *result : pointer to 2d array of Face -> Array of Directions
 */
-__global__ void generate_ray_dir(curandState *rand1, curandState *rand2, int n, PatchData *faces, int num, int *hit) {
+__global__ void generate_ray_dir(curandState*globalState, curandState *rand1, curandState *rand2, int n, PatchData *faces, int num, int *hit) {
 
 	//printf("num %d", num);
 
@@ -110,9 +140,9 @@ __global__ void generate_ray_dir(curandState *rand1, curandState *rand2, int n, 
 	/*
 	for (int i = 0; i < num; i++) {
 	while (count < n) {*/
-	float sin_theta = sqrt(curand_uniform(rand1 + idx));
+	float sin_theta = sqrt(generate(globalState, idx));
 	float cos_theta = sqrt(1 - sin_theta * sin_theta);
-	float psi = 2 * 3.14159265359 * curand_uniform((rand1 + idx));
+	float psi = 2 * 3.14159265359 * generate(globalState, idx);
 	float a1 = sin_theta * cos(psi);
 	float b1 = sin_theta * sin(psi);
 	float c1 = cos_theta;
@@ -122,12 +152,10 @@ __global__ void generate_ray_dir(curandState *rand1, curandState *rand2, int n, 
 	optix::float3 v2 = b1 * (faces[i].c - faces[i].a);
 	optix::float3 v3 = c1 * faces[i].norm;
 
-	curandState localState = rand1[idx];
-	float r2 = curand_uniform(&localState);
-	//printf("index %d \n", idx);
-	printf("random float %f \n", r2);
-	float r1 = curand_uniform((rand2 + int(idx/2)));
-	//printf("random float2 %f \n", r1);
+	//float r2 = curand_uniform((rand2 + idx));
+	float r2 = generate(globalState, idx);
+	float r1 = generate(globalState, idx);
+	printf("random float %f \t %f \t %f \t %f \n", r2, r1, sin_theta, psi);
 
 	optix::float3 pt = (1.0 - sqrt(r1))*faces[i].a + (sqrt(r1) * (1.0 - r2))*faces[i].b + (r2 * sqrt(r1)*faces[i].c);
 	optix::float3 direction = v1 + v2 + v3;
@@ -137,7 +165,6 @@ __global__ void generate_ray_dir(curandState *rand1, curandState *rand2, int n, 
 	intersectAllTriangles(ray, num, faces, face);
 	//printf("face %d \n", face);
 	hit[idx] = face;
-	rand1[idx] = localState;
 
 }
 
@@ -184,9 +211,15 @@ int main() {
 	std::clock_t start;
 	float duration;
 
+
+	curandState* deviceStates;
+	cudaMalloc((void**)&deviceStates, PATCH_NUM * sizeof(curandState));
+	initialise_curand_on_kernels << <PATCH_NUM, SAMPLES >> > (deviceStates, unsigned(time(NULL)));
+
 	start = std::clock();
 
-	generate_ray_dir << <PATCH_NUM, 1024 >> > (d_state, d_state1, SAMPLES, g_patch_arr, PATCH_NUM, g_hit);
+
+	generate_ray_dir << <PATCH_NUM, SAMPLES >> > (deviceStates, d_state, d_state1, SAMPLES, g_patch_arr, PATCH_NUM, g_hit);
 	CudaCheckError();
 	cudaMemcpy(c_hit, g_hit, SAMPLES*PATCH_NUM * sizeof(int), cudaMemcpyDeviceToHost);
 	duration = (std::clock() - start) / (float)CLOCKS_PER_SEC;
