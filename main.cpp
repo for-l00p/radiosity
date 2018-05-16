@@ -27,7 +27,7 @@ using namespace std;
 #include "UserControls.h"
 
 
-int oldmain(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
 
 	

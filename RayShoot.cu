@@ -1,4 +1,3 @@
-#include <optixu/optixu_math_namespace.h>
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
@@ -6,21 +5,13 @@
 #include <cstdio>
 #include <time.h>
 #include <ctime>
+#include <optixu/optixu_math_namespace.h>
 #include <curand_kernel.h>
 #include <cuda.h>
 #include "errorchecking.cu"
 
-#define PATCH_NUM 5
-#define SAMPLES 2
-
-struct PerRayData_pathtrace
-{
-	optix::float3 origin;
-	optix::float3 direction;
-	optix::float3 result;
-	float importance;
-	int depth;
-};
+//#define PATCH_NUM 5
+//#define SAMPLES 2
 
 struct PatchData {
 	optix::float3 a;
@@ -28,9 +19,10 @@ struct PatchData {
 	optix::float3 c;
 	optix::float3 norm;
 	int id;
+
 };
 
-
+extern int* main_test(PatchData *patches, int PATCH_NUM, int SAMPLES);
 struct Ray {
 	optix::float3 orig;	// ray origin
 	optix::float3 dir;		// ray direction	
@@ -130,7 +122,7 @@ num : number of faces
 faces[] : array containing all the faces struct
 *result : pointer to 2d array of Face -> Array of Directions
 */
-__global__ void generate_ray_dir(curandState*globalState, curandState *rand1, curandState *rand2, int n, PatchData *faces, int num, int *hit) {
+__global__ void generate_ray_dir(curandState*globalState, int n, PatchData *faces, int num, int *hit) {
 
 	//printf("num %d", num);
 
@@ -155,7 +147,7 @@ __global__ void generate_ray_dir(curandState*globalState, curandState *rand1, cu
 	//float r2 = curand_uniform((rand2 + idx));
 	float r2 = generate(globalState, idx);
 	float r1 = generate(globalState, idx);
-	printf("random float %f \t %f \t %f \t %f \n", r2, r1, sin_theta, psi);
+	//printf("random float %f \t %f \t %f \t %f \n", r2, r1, sin_theta, psi);
 
 	optix::float3 pt = (1.0 - sqrt(r1))*faces[i].a + (sqrt(r1) * (1.0 - r2))*faces[i].b + (r2 * sqrt(r1)*faces[i].c);
 	optix::float3 direction = v1 + v2 + v3;
@@ -168,33 +160,9 @@ __global__ void generate_ray_dir(curandState*globalState, curandState *rand1, cu
 
 }
 
-int main() {
-	curandState *d_state;
-	cudaMalloc((void**)&d_state, sizeof(curandState));
-	CudaCheckError();
-	curandState *d_state1;
-	cudaMalloc((void**)&d_state1, sizeof(curandState));
-	CudaCheckError();
-	srand(time(NULL));
-	rand_kernel << <1, 1 >> >(d_state, rand());
-	CudaCheckError();
-	srand(time(NULL));
-	rand_kernel << <1, 1 >> >(d_state1, rand());
-	CudaCheckError();
+int* main_test(PatchData *patches, int PATCH_NUM, int SAMPLES) {
 
-	//host data structures
-	PatchData test;
-	PatchData *patches = (PatchData*)malloc(PATCH_NUM * sizeof(PatchData));
-	int p = 0;
-	for (p = 0; p < PATCH_NUM; p++) {
-		PatchData *t = (PatchData*)malloc(sizeof(PatchData));
-		t->a = optix::make_float3(1.0f, 1.0f, 1.0f);
-		t->b = optix::make_float3(1.0f, 0.0f, 1.0f);
-		t->c = optix::make_float3(1.0f, 1.0f, 0.0f);
-		t->norm = optix::make_float3(0.0f, -1.0f, 0.0f);
-		patches[p] = *t;
-	}
-
+	
 	//device data structures
 	PatchData *g_patch_arr = (PatchData*)malloc(PATCH_NUM * sizeof(PatchData));
 	optix::float3 *g_dir_arr = (optix::float3*)malloc(SAMPLES*PATCH_NUM * sizeof(optix::float3)), *g_pt_arr = (optix::float3*)malloc(SAMPLES*PATCH_NUM * sizeof(optix::float3));
@@ -218,20 +186,13 @@ int main() {
 
 	start = std::clock();
 
-
-	generate_ray_dir << <PATCH_NUM, SAMPLES >> > (deviceStates, d_state, d_state1, SAMPLES, g_patch_arr, PATCH_NUM, g_hit);
+	generate_ray_dir << <PATCH_NUM, SAMPLES >> > (deviceStates, SAMPLES, g_patch_arr, PATCH_NUM, g_hit);
 	CudaCheckError();
 	cudaMemcpy(c_hit, g_hit, SAMPLES*PATCH_NUM * sizeof(int), cudaMemcpyDeviceToHost);
 	duration = (std::clock() - start) / (float)CLOCKS_PER_SEC;
 	printf("%f\n", duration);
-	for (int i = 0; i < PATCH_NUM*SAMPLES; i++) {
-		printf("face %d \n", c_hit[i]);
-	}
-	printf("Done");
 
-	free(patches);
-
-	return 0;
+	return c_hit;
 }
 
 
