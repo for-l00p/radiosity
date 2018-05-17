@@ -9,9 +9,9 @@
 #include <curand_kernel.h>
 #include <cuda.h>
 #include "errorchecking.cu"
-
-//#define PATCH_NUM 5
-//#define SAMPLES 2
+//
+//#define PATCH_NUM 512
+//#define SAMPLES 512
 
 struct PatchData {
 	optix::float3 a;
@@ -59,7 +59,7 @@ __global__ void rand_kernel(curandState *state, int seed) {
 	curand_init(seed, idx, 0, &state[0]);
 }
 
-__device__ void intersectAllTriangles(const Ray& r, const int number_of_triangles, PatchData *faces, int &face_id) {
+__device__ void intersectAllTriangles(Ray& r, const int number_of_triangles, PatchData *faces, int &face_id) {
 
 	float max_dist = 10000.0f;
 	int max_face = -1;
@@ -110,7 +110,7 @@ __global__ void set_random_number_from_kernels(float* _ptr, curandState* globalS
 	if (idx < _points)
 	{
 		float x = generate(globalState, idx);
-		printf("%f \n", x);
+		//printf("%f \n", x);
 		_ptr[idx] = x;
 	}
 }
@@ -122,50 +122,57 @@ num : number of faces
 faces[] : array containing all the faces struct
 *result : pointer to 2d array of Face -> Array of Directions
 */
-__global__ void generate_ray_dir(curandState*globalState, int n, PatchData *faces, int num, int *hit) {
+__global__ void generate_ray_dir(curandState*globalState, PatchData *faces, int num, int *hit) {
 
-	//printf("num %d", num);
+	for (int h = 0; h < 32; h++) {
+		int idx = threadIdx.x + blockDim.x*blockIdx.x + h;
+		//int sad = //threadIdx.x + h;
+		int i = blockIdx.x;
 
-	int idx = threadIdx.x + blockDim.x*blockIdx.x;
-	int i = blockIdx.x;
-	int count = 0;
-	/*
-	for (int i = 0; i < num; i++) {
-	while (count < n) {*/
-	float sin_theta = sqrt(generate(globalState, idx));
-	float cos_theta = sqrt(1 - sin_theta * sin_theta);
-	float psi = 2 * 3.14159265359 * generate(globalState, idx);
-	float a1 = sin_theta * cos(psi);
-	float b1 = sin_theta * sin(psi);
-	float c1 = cos_theta;
+		float sin_theta = sqrt(generate(globalState, idx));
+		float cos_theta = sqrt(1 - sin_theta * sin_theta);
+		float psi = 2 * 3.14159265359 * generate(globalState, idx);
+		float a1 = sin_theta * cos(psi);
+		float b1 = sin_theta * sin(psi);
+		float c1 = cos_theta;
 
 
-	optix::float3 v1 = a1 * (faces[i].b - faces[i].a);
-	optix::float3 v2 = b1 * (faces[i].c - faces[i].a);
-	optix::float3 v3 = c1 * faces[i].norm;
+		optix::float3 v1 = a1 * (faces[i].b - faces[i].a);
+		optix::float3 v2 = b1 * (faces[i].c - faces[i].a);
+		optix::float3 v3 = c1 * faces[i].norm;
 
-	//float r2 = curand_uniform((rand2 + idx));
-	float r2 = generate(globalState, idx);
-	float r1 = generate(globalState, idx);
-	//printf("random float %f \t %f \t %f \t %f \n", r2, r1, sin_theta, psi);
+		float r2 = generate(globalState,idx);
+		float r1 = generate(globalState, idx);
 
-	optix::float3 pt = (1.0 - sqrt(r1))*faces[i].a + (sqrt(r1) * (1.0 - r2))*faces[i].b + (r2 * sqrt(r1)*faces[i].c);
-	optix::float3 direction = v1 + v2 + v3;
-	//printf("dir (%f, %f, %f) \n", direction.x, direction.y, direction.z);
-	Ray ray = Ray(pt, direction);
-	int face = 0;
-	intersectAllTriangles(ray, num, faces, face);
-	//printf("face %d \n", face);
-	hit[idx] = face;
+		optix::float3 pt = (1.0 - sqrt(r1))*faces[i].a + (sqrt(r1) * (1.0 - r2))*faces[i].b + (r2 * sqrt(r1)*faces[i].c);
+		optix::float3 direction = v1 + v2 + v3;
+
+		Ray ray = Ray(pt, direction);
+		int face = 0;
+		intersectAllTriangles(ray, num, faces, face);
+		//printf("face %d for core %d r2 %f\n", face, blockIdx.x, r2);
+		if (threadIdx.x == 0 && blockIdx.x == 0) {
+		
+			printf("%d %d %d %d\n", blockIdx.x, threadIdx.x, h, face);
+		}
+		if (face == -1 && threadIdx.x == 0 && blockIdx.x==0) {
+			printf("missed %d %d %d\n", blockIdx.x, threadIdx.x, h);
+			h -= 1;
+		}
+		if (blockIdx.x == 100) {
+			printf("random # %f", r2);
+		}
+		else {
+			hit[idx] = face;
+		}
+
+	}
 
 }
 
 int* main_test(PatchData *patches, int PATCH_NUM, int SAMPLES) {
-
-	
-	//device data structures
 	PatchData *g_patch_arr = (PatchData*)malloc(PATCH_NUM * sizeof(PatchData));
-	optix::float3 *g_dir_arr = (optix::float3*)malloc(SAMPLES*PATCH_NUM * sizeof(optix::float3)), *g_pt_arr = (optix::float3*)malloc(SAMPLES*PATCH_NUM * sizeof(optix::float3));
+	//optix::float3 *g_dir_arr = (optix::float3*)malloc(SAMPLES*PATCH_NUM * sizeof(optix::float3)), *g_pt_arr = (optix::float3*)malloc(SAMPLES*PATCH_NUM * sizeof(optix::float3));
 	cudaMalloc((void**)&g_patch_arr, PATCH_NUM * sizeof(PatchData));
 	CudaCheckError();
 
@@ -181,17 +188,35 @@ int* main_test(PatchData *patches, int PATCH_NUM, int SAMPLES) {
 
 
 	curandState* deviceStates;
+	printf("size of curand %d\n", sizeof(curandState));
 	cudaMalloc((void**)&deviceStates, PATCH_NUM * sizeof(curandState));
-	initialise_curand_on_kernels << <PATCH_NUM, SAMPLES >> > (deviceStates, unsigned(time(NULL)));
+	CudaCheckError();
+
+	initialise_curand_on_kernels << <PATCH_NUM, SAMPLES / 16 >> > (deviceStates, unsigned(time(NULL)));
+	cudaDeviceSynchronize();
+
+	CudaCheckError();
 
 	start = std::clock();
 
-	generate_ray_dir << <PATCH_NUM, SAMPLES >> > (deviceStates, SAMPLES, g_patch_arr, PATCH_NUM, g_hit);
+	generate_ray_dir << <PATCH_NUM, SAMPLES/16 >> > (deviceStates, g_patch_arr, PATCH_NUM, g_hit);
+	cudaDeviceSynchronize();
 	CudaCheckError();
+
 	cudaMemcpy(c_hit, g_hit, SAMPLES*PATCH_NUM * sizeof(int), cudaMemcpyDeviceToHost);
+	CudaCheckError();
+
 	duration = (std::clock() - start) / (float)CLOCKS_PER_SEC;
 	printf("%f\n", duration);
 
+	cudaFree(g_patch_arr);
+	CudaCheckError();
+	/*cudaFree(g_dir_arr);
+	CudaCheckError();*/
+	cudaFree(deviceStates);
+	CudaCheckError();
+	cudaFree(g_hit);
+	CudaCheckError();
 	return c_hit;
 }
 

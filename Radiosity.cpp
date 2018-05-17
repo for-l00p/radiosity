@@ -27,7 +27,7 @@ struct test {
 #define INITIAL_AMBIENT_INTENSITY			glm::vec3(0.00f, 0.00f, 0.00f)
 
 #define RADIOSITY_SOLUTION_THRESHOLD		glm::vec3(0.25f, 0.25f, 0.25f)
-#define FORM_FACTOR_SAMPLES					250
+#define FORM_FACTOR_SAMPLES					1024
 #define DONE_ON_CPU							false  // controls which side the form factor computation will be done in
 optix::Context context = 0;
 optix::Buffer vertices, faces, normals;
@@ -393,7 +393,7 @@ void Radiosity::calculateRadiosityValues()
 			}
 
 			tmr.reset();
-			int* out = main_test(patches, sceneFaces.size(), 512);
+			int* out = main_test(patches, sceneFaces.size(), 1024);
 			std::cout << "Calculating Form Factors on the GPU took :" << tmr.elapsed() << endl;
 
 			// Decodes the updated form factor matrix
@@ -413,6 +413,7 @@ void Radiosity::calculateRadiosityValues()
 			
 			}
 			free(patches);
+			free(out);
 		}
 
 		for (int i = 0; i < sceneFaces.size(); i++) {

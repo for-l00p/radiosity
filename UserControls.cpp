@@ -27,7 +27,7 @@ glm::mat4 UserControls::getProjectionMatrix()
 void UserControls::handleKeyboard(Mesh* mesh, Radiosity* radiosity)
 {
 	//Subdivide
-	if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS && !hasInterp)
+	if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)// && !hasInterp)
 	{
 		if (glfwGetKey(window, GLFW_KEY_E) == GLFW_RELEASE)
 		{
