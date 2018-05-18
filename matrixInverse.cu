@@ -215,8 +215,8 @@ double *createTest(const int rows, const int cols)
 
 int sh(void)
 {
-	const int rows = 2000;
-	const int cols = 2000;
+	const int rows = 1280*2;
+	const int cols = 1280*2;
 	double *testMatrix = createTest(rows, cols);
 	double *inverseMatrixGPU;
 

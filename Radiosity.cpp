@@ -3,6 +3,7 @@
 #include <optixu/optixu_math_namespace.h>
 #include <optixu/optixpp_namespace.h>
 #include <stdlib.h>
+#include <fstream>
 #include <math.h>
 #include <sutil.h>
 #include <Eigen/LU>
@@ -27,8 +28,8 @@ struct test {
 #define INITIAL_AMBIENT_INTENSITY			glm::vec3(0.00f, 0.00f, 0.00f)
 
 #define RADIOSITY_SOLUTION_THRESHOLD		glm::vec3(0.25f, 0.25f, 0.25f)
-#define FORM_FACTOR_SAMPLES					1024
-#define DONE_ON_CPU							false  // controls which side the form factor computation will be done in
+#define FORM_FACTOR_SAMPLES					512
+#define DONE_ON_CPU							true // controls which side the form factor computation will be done in
 optix::Context context = 0;
 optix::Buffer vertices, faces, normals;
 optix::Buffer outputFaces, distances;
@@ -73,147 +74,43 @@ glm::vec2 Radiosity::getTotalCounts(Mesh *mesh) {
 
 void Radiosity::loadSceneFacesFromMesh(Mesh* mesh)
 {
-	//destroyContext(); // resets the context before passing new values
-	//context = optix::Context::create();
-	//context->setRayTypeCount(2);
+	
+	sceneFaces.clear();
+	formFactors.clear();
 
-	//const char *ptx = sutil::getPtxString(SAMPLE_NAME, "RayTrace.cu");
-	//context->setRayGenerationProgram(0, context->createProgramFromPTXString(ptx, "pathtrace_camera"));
-	//context->setExceptionProgram(0, context->createProgramFromPTXString(ptx, "exception"));
-	//context->setMissProgram(0, context->createProgramFromPTXString(ptx, "miss"));
+	int vertexCtr, faceCtr;
 
-	////diffuse_ch = context->createProgramFromPTXString(ptx, "diffuse");
-	////diffuse_ch->setClosestHitProgram(0, diffuse_ch);
-	//ptx = sutil::getPtxString(SAMPLE_NAME, "parallelogram.cu");
-	//boundingProgram = context->createProgramFromPTXString(ptx, "bounds");
-	//intersectionProgram = context->createProgramFromPTXString(ptx, "intersect");
+	for (int i = 0; i<mesh->sceneModel.size(); i++)
+	{
+		//for every scene object
+		ObjectModel* currentObject = &mesh->sceneModel[i].obj_model;
 
+		int currentObjFaces = currentObject->faces.size();
 
-	//glm::vec2 totals = getTotalCounts(mesh);
-
-	//vertices = context->createBuffer(RT_BUFFER_INPUT, RT_FORMAT_FLOAT3, totals[1]);
-	//normals = context->createBuffer(RT_BUFFER_INPUT, RT_FORMAT_FLOAT3, totals[0]);
-	//faces = context->createBuffer(RT_BUFFER_INPUT, RT_FORMAT_UNSIGNED_INT4, totals[0]);
-	//outputFaces = sutil::createInputOutputBuffer(context, RT_FORMAT_FLOAT, FORM_FACTOR_SAMPLES, 0, true);
-	//distances = sutil::createInputOutputBuffer(context, RT_FORMAT_FLOAT, FORM_FACTOR_SAMPLES, 0, true);
-
-	//optix::float3 *vertexMap = reinterpret_cast<optix::float3*>(vertices->map());
-	//optix::float3 *normalMap = reinterpret_cast<optix::float3*>(normals->map());
-	//optix::uint4 *faceMap = reinterpret_cast<optix::uint4*>(faces->map());
-
-	//sceneFaces.clear();
-	//formFactors.clear();
-
-	//int vertexCtr, faceCtr;
-
-	//for (int i = 0; i<mesh->sceneModel.size(); i++)
-	//{
-	//	//for every scene object
-	//	ObjectModel* currentObject = &mesh->sceneModel[i].obj_model;
-
-	//	int currentObjFaces = currentObject->faces.size();
-
-	//	for (int j = 0; j < currentObjFaces; j++)
-	//	{
-	//		//for every face of it
-	//		ModelFace* currentFace = &mesh->sceneModel[i].obj_model.faces[j];
-
-	//		RadiosityFace radiosityFace;
-
-	//		radiosityFace.model = currentObject;
-	//		radiosityFace.faceIndex = j;
-	//		if (currentFace->material->illuminationMode != 1)
-	//			radiosityFace.emission = currentFace->material->diffuseColor * INITIAL_LIGHT_EMITTER_INTENSITY;
-	//		else
-	//			radiosityFace.emission = currentFace->material->diffuseColor * INITIAL_AMBIENT_INTENSITY;
-
-	//		radiosityFace.totalRadiosity = radiosityFace.emission;
-	//		radiosityFace.unshotRadiosity = radiosityFace.emission;
-
-	//		sceneFaces.push_back(radiosityFace);
-
-	//		//writing into buffers for Optix
-	//		std::vector<GLuint> f = currentFace->vertexIndexes;
-	//		faceMap[faceCtr] = optix::make_uint4(f[0], f[1], f[2], f[3]);
-	//		glm::vec3 n = currentObject->getFaceNormal(sceneFaces[i].faceIndex);
-	//		normalMap[faceCtr++] = optix::make_float3(n[0], n[1], n[2]);
-
-	//		int v0_k_index = sceneFaces[i].model->faces[sceneFaces[i].faceIndex].vertexIndexes[0];
-	//		int v1_k_index = sceneFaces[i].model->faces[sceneFaces[i].faceIndex].vertexIndexes[1];
-	//		int v2_k_index = sceneFaces[i].model->faces[sceneFaces[i].faceIndex].vertexIndexes[2];
-	//		int v3_k_index = sceneFaces[i].model->faces[sceneFaces[i].faceIndex].vertexIndexes[3];
-
-	//		glm::vec3 A = sceneFaces[i].model->vertices[v0_k_index];
-	//		glm::vec3 B = sceneFaces[i].model->vertices[v1_k_index];
-	//		glm::vec3 C = sceneFaces[i].model->vertices[v2_k_index];
-	//		glm::vec3 D = sceneFaces[i].model->vertices[v3_k_index];
-	//		vertexMap[vertexCtr++] = optix::make_float3(A[0], A[1], A[2]);
-	//		vertexMap[vertexCtr++] = optix::make_float3(B[0], B[1], B[2]);
-	//		vertexMap[vertexCtr++] = optix::make_float3(C[0], C[1], C[2]);
-	//		vertexMap[vertexCtr++] = optix::make_float3(D[0], D[1], D[2]);
-	//	}
-	//}
-
-	//context["vertex_buffer"]->setBuffer(vertices);
-	//context["normal_buffer"]->setBuffer(normals);
-	//context["face_buffer"]->setBuffer(faces);
-	//context["outputFaces"]->set(outputFaces);
-	//context["distances"]->set(distances);
-
-
-	//optix::Geometry geometry = context->createGeometry();
-	//geometry->setPrimitiveCount(totals[0]);
-	//geometry->setIntersectionProgram(intersectionProgram);
-	//geometry->setBoundingBoxProgram(boundingProgram);
-	//geometry->setPrimitiveIndexOffset(0);
-
-	//optix::GeometryInstance gi = context->createGeometryInstance();
-	//gi->setGeometry(geometry);
-	//std::vector<optix::GeometryInstance> gis;
-	//gis.push_back(gi);
-	//optix::GeometryGroup geo = context->createGeometryGroup(gis.begin(), gis.end());
-	//geo->setAcceleration(context->createAcceleration("Trbvh"));
-	//context["top_object"]->set(geo);
-
-	//formFactors.resize(sceneFaces.size(), vector<double>(sceneFaces.size()));
-
-
-sceneFaces.clear();
-formFactors.clear();
-
-		int vertexCtr, faceCtr;
-
-		for (int i = 0; i<mesh->sceneModel.size(); i++)
+		for (int j = 0; j < currentObjFaces; j++)
 		{
-			//for every scene object
-			ObjectModel* currentObject = &mesh->sceneModel[i].obj_model;
+			//for every face of it
+			ModelFace* currentFace = &mesh->sceneModel[i].obj_model.faces[j];
 
-			int currentObjFaces = currentObject->faces.size();
+			RadiosityFace radiosityFace;
 
-			for (int j = 0; j < currentObjFaces; j++)
-			{
-				//for every face of it
-				ModelFace* currentFace = &mesh->sceneModel[i].obj_model.faces[j];
+			radiosityFace.model = currentObject;
+			radiosityFace.faceIndex = j;
+			if (currentFace->material->illuminationMode != 1)
+				radiosityFace.emission = currentFace->material->diffuseColor * INITIAL_LIGHT_EMITTER_INTENSITY;
+			else
+				radiosityFace.emission = currentFace->material->diffuseColor * INITIAL_AMBIENT_INTENSITY;
 
-				RadiosityFace radiosityFace;
+			radiosityFace.totalRadiosity = radiosityFace.emission;
+			radiosityFace.unshotRadiosity = radiosityFace.emission;
 
-				radiosityFace.model = currentObject;
-				radiosityFace.faceIndex = j;
-				if (currentFace->material->illuminationMode != 1)
-					radiosityFace.emission = currentFace->material->diffuseColor * INITIAL_LIGHT_EMITTER_INTENSITY;
-				else
-					radiosityFace.emission = currentFace->material->diffuseColor * INITIAL_AMBIENT_INTENSITY;
+			sceneFaces.push_back(radiosityFace);
 
-				radiosityFace.totalRadiosity = radiosityFace.emission;
-				radiosityFace.unshotRadiosity = radiosityFace.emission;
-
-				sceneFaces.push_back(radiosityFace);
-
-			}
 		}
+	}
 
 
-		formFactors.resize(sceneFaces.size(), vector<double>(sceneFaces.size()));
+	formFactors.resize(sceneFaces.size(), vector<double>(sceneFaces.size()));
 }
 
 int Radiosity::getMaxUnshotRadiosityFaceIndex()
@@ -364,14 +261,14 @@ void Radiosity::calculateRadiosityValues()
 					A(i, j) = formFactors[i][j];
 				}
 
-				std::cout << "Percent of ray's that hit: " << (sum*100.0) << std::endl;
+				//std::cout << "Percent of ray's that hit: " << (sum*100.0) << std::endl;
 			}
 		
 		
 		}
 		else {
 			PatchData *patches = (PatchData*)malloc(sceneFaces.size() * sizeof(PatchData));
-			for (int i = 0; i < sceneFaces.size(); i++)
+			for (int i = sceneFaces.size()-1; i >= 0; i--)
 			{
 				PatchData *t = (PatchData*)malloc(sizeof(PatchData));
 				// loops through each patch a populates our patch data structure
@@ -393,7 +290,8 @@ void Radiosity::calculateRadiosityValues()
 			}
 
 			tmr.reset();
-			int* out = main_test(patches, sceneFaces.size(), 1024);
+			int* out = main_test(patches, sceneFaces.size(), FORM_FACTOR_SAMPLES);
+			printf("scenes %d", sceneFaces.size());
 			std::cout << "Calculating Form Factors on the GPU took :" << tmr.elapsed() << endl;
 
 			// Decodes the updated form factor matrix
@@ -401,19 +299,41 @@ void Radiosity::calculateRadiosityValues()
 				for (int j = 0; j < FORM_FACTOR_SAMPLES; j++) {
 				
 					int temp = out[i*FORM_FACTOR_SAMPLES + j];
-					//std::cout << "value is : " <<temp <<std::endl;
+					/*if (temp == 0) {
+						std::cout << "value is : " << temp << std::endl;
+					}*/
+					//std::cout << 
 					if (temp != -1) {
-						A(i, temp) += 1.0 / FORM_FACTOR_SAMPLES;
+						A(i, temp) += 1.0 / (float)(FORM_FACTOR_SAMPLES);
 					
 					}
 				
 				
 				}
-			
+				//std::cout << "Row " << i <<" sum " << A.row(i).sum() << endl;
 			
 			}
 			free(patches);
 			free(out);
+
+			std::ofstream file("test.csv"); 
+			if (file.is_open())
+			{
+				//Matrix m = Matrix::Random(30, 3);
+				//file << "Here is the matrix m:\n" << A << '\n';
+				for (int i = 0; i < A.rows(); i++) {
+					for (int j = 0; j < A.cols(); j++) {
+						string str = (std::to_string)(A(i, j));
+						if (j + 1 == A.cols()) {
+							file << str;
+						}
+						else {
+							file << str << ',';
+						}
+					}
+					file << '\n';
+				}
+			}
 		}
 
 		for (int i = 0; i < sceneFaces.size(); i++) {
