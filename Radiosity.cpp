@@ -29,7 +29,7 @@ struct test {
 
 #define RADIOSITY_SOLUTION_THRESHOLD		glm::vec3(0.25f, 0.25f, 0.25f)
 #define FORM_FACTOR_SAMPLES					512
-#define DONE_ON_CPU							true // controls which side the form factor computation will be done in
+#define DONE_ON_CPU							false // controls which side the form factor computation will be done in
 optix::Context context = 0;
 optix::Buffer vertices, faces, normals;
 optix::Buffer outputFaces, distances;
